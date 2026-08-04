@@ -227,6 +227,15 @@ jobs:
               - name: smoke
                 kind: script
                 script: cargo-dist/tests/smoke.star
+          - platform: windows/amd64
+            platform_slug: windows_amd64
+            runner: windows-latest
+            container_id: _native_
+            shell: pwsh
+            tests:
+              - name: smoke
+                kind: script
+                script: cargo-dist/tests/smoke.star
 
     runs-on: ${{ matrix.runner }}
     steps:

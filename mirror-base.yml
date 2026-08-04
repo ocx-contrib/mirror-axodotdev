@@ -111,9 +111,9 @@ platforms:
   darwin/arm64:
     runner: macos-14
     shell: bash
-  # windows/amd64:
-  #   runner: windows-latest
-  #   shell: pwsh
+  windows/amd64:
+    runner: windows-latest
+    shell: pwsh
   # No `containers:` on darwin or windows — those runners have no Linux
   # container engine, and the key is rejected at spec load.
 

@@ -135,8 +135,8 @@ assets:
     - "^cargo-dist-x86_64-apple-darwin\\.tar\\.xz$"
   darwin/arm64:
     - "^cargo-dist-aarch64-apple-darwin\\.tar\\.xz$"
-  # windows/amd64:
-  #   - "^cargo-dist-x86_64-pc-windows-msvc\\.zip$"
+  windows/amd64:
+    - "^cargo-dist-x86_64-pc-windows-msvc\\.zip$"
 
 # ─── SPLIT ARCHIVE LAYOUT — the trap in this package ────────────────────────
 #
@@ -180,10 +180,10 @@ asset_type:
   default:
     type: archive
     strip_components: 1
-  # platforms:
-  #   windows/amd64:
-  #     type: archive
-  #     strip_components: 0
+  platforms:
+    windows/amd64:
+      type: archive
+      strip_components: 0
 
 # `off`, overriding the base's `auto` — FORCED by the layout above, not chosen.
 # The scan only inspects an interface-visible `${installPath}/<dir>` PATH
