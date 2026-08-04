@@ -1,0 +1,242 @@
+# ⚠ `extends:` is a SHALLOW merge of TOP-LEVEL KEYS. Setting a key here
+# REPLACES the base's block outright — there is no per-key merge. `platforms:`
+# is deliberately NOT restated below: it carries the container legs that make
+# this spec's bare Linux keys honest, and restating it to tweak one runner
+# would drop them all without reddening anything.
+extends: ../mirror-base.yml
+
+name: cargo-dist
+
+# Logical index package `axodotdev/cargo-dist` at the physical path
+# `ghcr.io/ocx-contrib/axodotdev/cargo-dist` — slash segments, never
+# hyphen-flattened. Two segments always.
+#
+# NAMESPACE `axodotdev`: the org is the project's own brand (rule 2), and it
+# plausibly holds more than one package (`oranda`, `axoupdater`) (rule 1) —
+# both rules land on the same handle.
+#
+# PACKAGE SEGMENT `cargo-dist`, NOT `dist`: the segment is the name the project
+# PUBLISHES under, never the binary you type. The project renamed its CLI to
+# `dist` but still publishes as `cargo-dist` — the crate is `cargo-dist`
+# (README badge `img.shields.io/crates/v/cargo-dist.svg`), the repo is
+# `axodotdev/cargo-dist`, and the binary itself self-reports `cargo-dist
+# 0.32.0` from `dist --version`. Same relationship as `github/cli` shipping
+# `gh` and `powershell/powershell` shipping `pwsh`.
+#
+# The first path segment of `target.repository` must be this repo's own GitHub
+# owner: GITHUB_TOKEN only authorises packages owned by the repo the workflow
+# runs in.
+target:
+  registry: ghcr.io
+  repository: ocx-contrib/axodotdev/cargo-dist
+
+source:
+  type: github_release
+  owner: axodotdev
+  repo: cargo-dist
+  # STRICTLY anchored, and that strictness is load-bearing. Upstream ships a
+  # heavy prerelease train — `v0.32.0-prerelease.1`, `v0.31.0-prerelease.{2,3}`,
+  # `v1.0.0-rc.1` — interleaved with the stable tags (17 of the newest 30 tags
+  # are prereleases). The `$` after the third number excludes every one of them
+  # structurally, and `skip_prereleases: true` in ../mirror-base.yml excludes
+  # them again via the GitHub prerelease flag. Belt and braces, deliberately:
+  # either mechanism alone would do it, and neither is free to drop.
+  tag_pattern: "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
+
+# ─── libc gate (Phase 3.5) — the evidence, not the conclusion ───────────────
+#
+# `dist` is Rust and upstream ships BOTH `-gnu` and `-musl` for amd64 and
+# arm64. The triple is not the verdict; the ELF header is. Measured on v0.32.0
+# (latest) and v0.30.4 (the floor), on both arches:
+#
+#   $ file cargo-dist-x86_64-unknown-linux-musl/dist
+#   ELF 64-bit LSB pie executable, x86-64, static-pie linked, BuildID[sha1]=…
+#   $ file cargo-dist-aarch64-unknown-linux-musl/dist
+#   ELF 64-bit LSB executable, ARM aarch64, statically linked, stripped
+#   $ readelf -l <bin> | grep -c INTERP   → 0        (all four)
+#   $ readelf -d <bin> | grep -c NEEDED   → 0        (all four)
+#
+# No PT_INTERP and no DT_NEEDED: musl is linked IN, not linked AGAINST. The
+# artifact requires nothing of the host, so both Linux keys are BARE — no
+# `+libc.*` suffix. Tagging them `+libc.musl` would be a false requirement that
+# hid the package from every glibc host it in fact runs on.
+#
+# UPX gate cleared before trusting any of the above — a packed binary shows no
+# PT_INTERP either, and `file` then calls a glibc-dynamic build "statically
+# linked":
+#
+#   $ strings -a <bin> | grep -c '^UPX'   → 0        (all eight binaries)
+#   $ readelf -h <bin> | grep 'section headers'
+#   → 15–35 sections, at a non-zero offset  (a UPX stub reports 0)
+#
+# The gnu assets were measured too, and are the contrast that makes the choice
+# deliberate rather than incidental:
+#
+#   $ file cargo-dist-x86_64-unknown-linux-gnu/dist
+#   … dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, …
+#   $ file cargo-dist-aarch64-unknown-linux-gnu/dist
+#   … dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, …
+#   $ readelf -d … | grep -c NEEDED  → 4 (x86_64), 4–5 (aarch64)
+#
+# Those genuinely require glibc and would need `+libc.glibc`. Not carried, and
+# the usual reason to carry a second gnu key does not apply: it is DNS, because
+# a static musl binary uses musl's resolver and ignores nsswitch.conf and NSS
+# modules. `dist` makes plain HTTPS requests to public hosts (crates.io,
+# GitHub, npm) — no LDAP/mDNS/NIS name source is reachable from its behaviour,
+# so the gnu build carries no capability a user of this package could reach.
+# One bare key per arch, and the alpine container leg in ../mirror-base.yml is
+# what turns the universality claim into evidence.
+#
+# ─── Scope (verified on ALL THREE in-range releases: v0.30.4, v0.31.0, v0.32.0)
+#
+# All three ship an identical 23-asset set. Beyond the five carried below,
+# upstream publishes — and this mirror deliberately does not carry:
+#   cargo-dist-{x86_64,aarch64}-unknown-linux-gnu.tar.xz
+#                                    — the dynamic glibc twins; see the libc
+#                                      gate above for why the static musl
+#                                      build supersedes them.
+#   *.tar.xz.sha256 / *.zip.sha256   — checksum sidecars. Every pattern below
+#                                      ends `\.tar\.xz$` or `\.zip$`, so the
+#                                      `.sha256` suffix cannot match; upstream
+#                                      digests are verified anyway via
+#                                      `verify.github_asset_digest` in
+#                                      ../mirror-base.yml.
+#   cargo-dist-installer.{sh,ps1}    — shell/PowerShell install scripts, not
+#                                      relocatable artifacts.
+#   cargo-dist-npm-package.tar.gz    — an npm wrapper package, not the CLI.
+#   cargo-dist.rb                    — a Homebrew formula.
+#   dist-manifest.json,
+#   dist-manifest-schema.json,
+#   sha256.sum                       — release metadata.
+#   source.tar.gz(.sha256)           — source, not a built artifact.
+#
+# There is NO windows/arm64 platform in this mirror and none staged for later:
+# upstream has never shipped an aarch64 Windows asset. Every in-range release
+# carries exactly ONE Windows artifact, `-x86_64-pc-windows-msvc.zip`. So five
+# OCX platforms, not six.
+#
+# The asset names carry NO version segment (`cargo-dist-<triple>.<ext>` is
+# constant across releases), so every pattern below is a fully literal anchored
+# match with no wildcard at all — the tightest form available. Resolution
+# verified BOTH ways on every in-range release: each pattern matches EXACTLY
+# one asset, and the 18 assets listed above match none of them. A pattern
+# matching zero is silently skipped, not an error — it would yield a green run
+# with a missing platform.
+#
+# ⚠ STAGED ROLLOUT — darwin/windows keys are commented here AND in
+# ../mirror-base.yml's `platforms:` block; both halves get uncommented
+# together, one pass at a time, with `generate ci` re-run each pass.
+assets:
+  linux/amd64:
+    - "^cargo-dist-x86_64-unknown-linux-musl\\.tar\\.xz$"
+  linux/arm64:
+    - "^cargo-dist-aarch64-unknown-linux-musl\\.tar\\.xz$"
+  # darwin/amd64:
+  #   - "^cargo-dist-x86_64-apple-darwin\\.tar\\.xz$"
+  # darwin/arm64:
+  #   - "^cargo-dist-aarch64-apple-darwin\\.tar\\.xz$"
+  # windows/amd64:
+  #   - "^cargo-dist-x86_64-pc-windows-msvc\\.zip$"
+
+# ─── SPLIT ARCHIVE LAYOUT — the trap in this package ────────────────────────
+#
+# The unix tarballs and the Windows zip do NOT share a layout, so a single
+# uniform `strip_components` is wrong for one of them either way. Measured with
+# `tar tvf` on v0.30.4 + v0.32.0 (all six unix assets) and `unzip -l` on the
+# Windows zip of ALL THREE in-range releases:
+#
+#   cargo-dist-<triple>.tar.xz   (every unix target — linux gnu/musl, darwin)
+#     cargo-dist-<triple>/          <- ONE wrapper directory
+#     cargo-dist-<triple>/dist         0755
+#     cargo-dist-<triple>/{LICENSE-MIT,LICENSE-APACHE,README.md,CHANGELOG.md}
+#
+#   cargo-dist-x86_64-pc-windows-msvc.zip
+#     dist.exe                      <- FLAT. No wrapper directory at all.
+#     {LICENSE-APACHE,LICENSE-MIT,README.md,CHANGELOG.md}
+#
+# So: strip 1 on unix (the wrapper name embeds the target triple and cannot be
+# named in a static PATH), strip 0 on Windows (there is nothing to strip).
+#
+# The override is not cosmetic, and the failure mode is SILENT. Every entry in
+# the Windows zip sits at depth 1, so stripping one component leaves nothing
+# behind at all — measured with a throwaway windows-only probe spec, no runner
+# involved:
+#
+#   strip_components: 0  →  bundle.tar.xz = dist.exe + the 4 doc files   ✅
+#   strip_components: 1  →  bundle.tar.xz = COMPLETELY EMPTY,
+#                           and `pipeline prepare` still EXITS 0         ❌
+#
+# A uniform `1` here would therefore publish an empty Windows artifact with a
+# green run, and nothing would red until the smoke test could not find the
+# binary. Both bundles land the payload at the content root, which is what lets
+# ONE metadata.json with `PATH = ${installPath}` serve every platform — no
+# metadata-windows.json needed.
+#
+# The `name:` half of this same per-platform mechanism is deliberately NOT
+# used: `name:` belongs to `asset_type: binary`, and every asset here is an
+# archive whose Windows member is already called `dist.exe` upstream. There is
+# no suffix to synthesise.
+asset_type:
+  default:
+    type: archive
+    strip_components: 1
+  # platforms:
+  #   windows/amd64:
+  #     type: archive
+  #     strip_components: 0
+
+# `off`, overriding the base's `auto` — FORCED by the layout above, not chosen.
+# The scan only inspects an interface-visible `${installPath}/<dir>` PATH
+# entry, and once the wrapper directory is stripped this archive has no
+# subdirectory to point one at, so both `auto` and `verify` fail spec load at
+# exit 65:
+#
+#   bin_scan is enabled but metadata.json declares no interface-visible
+#   ${installPath}/<dir> PATH entry — the verification would inspect no file and
+#   pass green whatever the archive contains.
+#
+# The `binaries` list in metadata.json is therefore hand-maintained, exactly as
+# that error directs. It is short and stable: `dist` (`dist.exe` on Windows) is
+# the ONLY mode-0755 entry in every archive — LICENSE-MIT, LICENSE-APACHE,
+# README.md and CHANGELOG.md are 0644 data. Quoted so no YAML 1.1 reader folds
+# the bare word into boolean `false`.
+bin_scan: "off"
+
+metadata:
+  default: metadata.json
+
+catalog:
+  logo: logo.svg
+
+versions:
+  # v0.30.3 and below are out of range. The floor is deliberately conservative
+  # rather than forced: nothing about 0.30.3 is known-broken, but the asset set
+  # and both archive layouts were byte-verified only from 0.30.4 up, and the
+  # rule is to declare what was measured. Lowering it later is additive and
+  # costs one backfill run.
+  min: "0.30.4"
+  new_per_run: 5
+  poll_interval: "44 */6 * * *"
+
+tests:
+  # `script:` resolves from the REPOSITORY ROOT — unlike `metadata.default` and
+  # `catalog.logo` above, which resolve against this spec's own directory.
+  - name: smoke
+    script: cargo-dist/tests/smoke.star
+
+annotations:
+  # From the Phase 1.5 license gate. The full DUAL expression, not the single
+  # id the GitHub API reports:
+  #   $ gh api repos/axodotdev/cargo-dist/license --jq '.license.spdx_id'
+  #   Apache-2.0                      <- single-license detector artifact
+  #   $ gh api .../contents/Cargo.toml | base64 -d | grep license
+  #   license = "MIT OR Apache-2.0"   <- the actual grant
+  # Both LICENSE-APACHE and LICENSE-MIT exist at the repo root AND inside every
+  # release archive.
+  org.opencontainers.image.licenses: "MIT OR Apache-2.0"
+
+announce:
+  # Spelled out, not derived from target.repository — the logical name and the
+  # physical path are related by convention only.
+  package: axodotdev/cargo-dist
+  fork: ocx-contrib/index

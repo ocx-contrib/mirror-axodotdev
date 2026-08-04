@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="dist">
+  <title>dist</title>
+  <!--
+    Original minimal geometric mark authored for this OCX mirror.
+
+    Upstream (axodotdev/cargo-dist) publishes no logo: the README carries only
+    shields.io badges, and book/src/img holds screenshots only. Per the
+    create-mirror playbook (Phase 6) the fallback is an original mark, so this
+    is one — an isometric shipping crate with an outbound arrow, after the
+    project's own one-line description, "shippable application packaging".
+    It reproduces no upstream trademark.
+  -->
+  <rect width="256" height="256" rx="56" fill="#1B1A22"/>
+  <!-- crate: right face (darkest), left face, top face (lightest) -->
+  <path d="M128 128 L198 88 L198 168 L128 208 Z" fill="#B8471A"/>
+  <path d="M58 88 L128 128 L128 208 L58 168 Z" fill="#D95C22"/>
+  <path d="M128 48 L198 88 L128 128 L58 88 Z" fill="#F5813B"/>
+  <!-- seam down the front corner of the crate -->
+  <path d="M128 128 L128 208" stroke="#1B1A22" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
+  <!-- outbound arrow lifting off the top face -->
+  <path d="M128 20 L160 52 L138 52 L138 84 L118 84 L118 52 L96 52 Z" fill="#FFE9DC"/>
+</svg>
