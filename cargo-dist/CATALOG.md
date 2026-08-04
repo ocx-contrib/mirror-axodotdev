@@ -37,17 +37,6 @@ answer "what would this release actually ship?".
 The mirrored archives also carry upstream's `README.md`, `CHANGELOG.md` and
 both license files (`LICENSE-MIT`, `LICENSE-APACHE`) alongside the binary.
 
-## Install with ocx
-
-```sh
-ocx install ocx.sh/axodotdev/cargo-dist
-```
-
-```sh
-# or pin a specific version
-ocx install ocx.sh/axodotdev/cargo-dist:0.32.0
-```
-
 ## Links
 
 - [cargo-dist on GitHub](https://github.com/axodotdev/cargo-dist)
