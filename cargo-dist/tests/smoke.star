@@ -35,6 +35,20 @@
 
 DIST = "dist.exe" if ocx.target_platform.os == ocx.os.Windows else "dist"
 
+# `dist` calls exit(-1) when the config's cargo-dist-version does not match the
+# running binary (Tier 3c). A NEGATIVE exit does not survive to the caller the
+# same way on both platforms: POSIX passes only the low 8 bits, so -1 arrives as
+# 255, while Windows keeps the full 32-bit value and RunResult.exit_code
+# surfaces it as -1. Same tool behaviour, two OS encodings — so the expected
+# code is a platform constant rather than a bare integer.
+#
+# Both values are MEASURED, not assumed: 255 locally on linux/amd64 for all
+# three in-range versions, -1 on the windows-latest leg. The distinction from
+# clap's exit 2 (Tier 3b) is preserved on both platforms, which is the whole
+# point of pinning it. Note this asymmetry does NOT apply to positive codes —
+# clap's 2 is 2 everywhere, which is why Tier 3b needs no branch.
+MISMATCH_EXIT = -1 if ocx.target_platform.os == ocx.os.Windows else 255
+
 # ─── Tier 1 + 2: liveness on the composed PATH, and version SHAPE ──────────
 # The digits are the contract; the vendor banner is not. `--version` prints
 # `cargo-dist <X.Y.Z>` — one line, the version as its last whitespace token.
@@ -119,13 +133,14 @@ expect.eq(r_bogus.exit_code, 2)
 # ─── Tier 3c: the negative control — red IS reachable ──────────────────────
 # Same fixture, same verb, one field changed to a version that cannot be the
 # running binary's (dist has never released a 0.0.1). dist's own config gate
-# must reject it with exit 255, and the plan tokens from Tier 3a must be
-# absent. Without this, every assertion above could be satisfied by a tool
-# that ignored the config entirely.
+# must reject it — with the platform-encoded exit(-1) defined at the top of
+# this file — and the plan tokens from Tier 3a must be absent. Without this,
+# every assertion above could be satisfied by a tool that ignored the config
+# entirely.
 write_workspace("0.0.1")
 
 r_mismatch = ocx.run(DIST, "plan", "--output-format=json", cwd="ws")
-expect.eq(r_mismatch.exit_code, 255)
+expect.eq(r_mismatch.exit_code, MISMATCH_EXIT)
 expect.eq(r_mismatch.stdout.count('"announcement_tag": "v4.5.6"'), 0)
 expect.eq(r_mismatch.stdout.count('"kind": "executable-zip"'), 0)
 
