@@ -216,7 +216,7 @@ versions:
   # costs one backfill run.
   min: "0.30.4"
   new_per_run: 5
-  poll_interval: "44 */6 * * *"
+  poll_interval: "57 2-23/6 * * *"
 
 tests:
   # `script:` resolves from the REPOSITORY ROOT — unlike `metadata.default` and
