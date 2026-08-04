@@ -131,10 +131,10 @@ assets:
     - "^cargo-dist-x86_64-unknown-linux-musl\\.tar\\.xz$"
   linux/arm64:
     - "^cargo-dist-aarch64-unknown-linux-musl\\.tar\\.xz$"
-  # darwin/amd64:
-  #   - "^cargo-dist-x86_64-apple-darwin\\.tar\\.xz$"
-  # darwin/arm64:
-  #   - "^cargo-dist-aarch64-apple-darwin\\.tar\\.xz$"
+  darwin/amd64:
+    - "^cargo-dist-x86_64-apple-darwin\\.tar\\.xz$"
+  darwin/arm64:
+    - "^cargo-dist-aarch64-apple-darwin\\.tar\\.xz$"
   # windows/amd64:
   #   - "^cargo-dist-x86_64-pc-windows-msvc\\.zip$"
 
