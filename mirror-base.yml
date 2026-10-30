@@ -78,7 +78,7 @@ bin_scan: auto
 # darwin/windows keys are commented out below AND in cargo-dist/mirror.yml's
 # `assets:` block, and get uncommented one pass at a time. A declared platform
 # with no matching asset regex does NOT quietly self-skip: it boots a real
-# macos-14 / windows runner and reports SUCCESS having tested nothing. Both
+# macos-15 / windows runner and reports SUCCESS having tested nothing. Both
 # halves must be commented, and CI regenerated, per pass.
 #
 # There is NO windows/arm64 pass. Upstream has never shipped an aarch64 Windows
@@ -104,12 +104,12 @@ platforms:
       - { image: "alpine:3.20",  shell: sh }
       - { image: "fedora:40",    shell: bash }
   darwin/amd64:
-    # Intel slice tested on the arm64 macos-14 runner via Rosetta 2 —
+    # Intel slice tested on the arm64 macos-15 runner via Rosetta 2 —
     # GitHub's native macos-13 Intel pool is exhausted and deadlocks push.
-    runner: macos-14
+    runner: macos-15
     prefix: ["arch", "-x86_64"]
   darwin/arm64:
-    runner: macos-14
+    runner: macos-15
     shell: bash
   windows/amd64:
     runner: windows-latest
